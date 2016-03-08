@@ -4,11 +4,11 @@
 #include "RunningMedian.h"
 
 // Height measured in number of LEDs from bottom of tube to top
-const int HEIGHTS[] = {85, 60, 120, 120, 120, 120, 120};
+const int HEIGHTS[] = {120, 120, 120, 120, 120, 120, 120};
 #define MAX_HEIGHT 115
 
 #define NUM_LEDS_PER_STRIP 240
-#define NUM_STRIPS 2
+#define NUM_STRIPS 7
 
 #define NUM_LEDS NUM_STRIPS * NUM_LEDS_PER_STRIP
 
@@ -34,7 +34,7 @@ RunningMedian values2 = RunningMedian(8);
 
 void setup() {
   LEDS.addLeds<OCTOWS2811>(leds, NUM_LEDS_PER_STRIP);
-  LEDS.setBrightness(255);
+  LEDS.setBrightness(255); // overall brightness
   Serial.begin(9600);
 }
 
@@ -150,7 +150,7 @@ int getBright(int t, int maxBrightness) {
 }
 
 float getProximity(int strip) {
-  //return 0;
+  return 0; // ignore IR
   //  Serial.print("Raw Input: ");
   //  Serial.print(x);
   //  Serial.print("   Mapped Output: ");
