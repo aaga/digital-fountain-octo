@@ -4,26 +4,26 @@
 #include "RunningMedian.h"
 
 // Height measured in number of LEDs from bottom of tube to top
-const int HEIGHTS[] = {115, 50, 120, 120, 120, 120, 120};
+const int HEIGHTS[] = {85, 60, 120, 120, 120, 120, 120};
 #define MAX_HEIGHT 115
 
 #define NUM_LEDS_PER_STRIP 240
-#define NUM_STRIPS 7
+#define NUM_STRIPS 2
 
 #define NUM_LEDS NUM_STRIPS * NUM_LEDS_PER_STRIP
 
 CRGB leds[NUM_LEDS];
 #define MODE_DURATION 10 // in seconds
-#define FRAMES_PER_SECOND 30
+#define FRAMES_PER_SECOND 60
 #define NUM_FRAMES MODE_DURATION * FRAMES_PER_SECOND
 #define REFRESH_DELAY (1000/FRAMES_PER_SECOND) // time delay between LED changes (in milliseconds)
 #define NUM_MODES 3
-#define MAX_BRIGHTNESS 200
+#define MAX_BRIGHTNESS 255
 
 // IR sensors
-#define NUM_IR 2
-#define MAX_DISTANCE 250 // max distance that we care about
-const int IR_PINS[] = {18, 19};
+#define NUM_IR 1
+#define MAX_DISTANCE 350 // max distance that we care about
+const int IR_PINS[] = {22};
 
 int lastSensorValue[NUM_IR];
 RunningMedian values1 = RunningMedian(8);
@@ -34,7 +34,7 @@ RunningMedian values2 = RunningMedian(8);
 
 void setup() {
   LEDS.addLeds<OCTOWS2811>(leds, NUM_LEDS_PER_STRIP);
-  LEDS.setBrightness(32);
+  LEDS.setBrightness(255);
   Serial.begin(9600);
 }
 
@@ -75,8 +75,7 @@ void clearLEDs() {
 const int fadeBy = 5;
 void confetti(int t) {
   fadeToBlackBy(leds, NUM_LEDS, fadeBy);
-  if (t > (NUM_FRAMES - (MAX_BRIGHTNESS / fadeBy) - map(MAX_BRIGHTNESS,0, 255, 0, 77))) {
-    Serial.println(t);
+  if (t > (NUM_FRAMES - (MAX_BRIGHTNESS / fadeBy) - map(MAX_BRIGHTNESS, 0, 255, 0, 77))) {
     return;
   }
   for (int strip = 0; strip < NUM_STRIPS; strip++) {
@@ -123,16 +122,16 @@ void fadeSine(int t) {
     float l = BASE + AMPLITUDE + AMPLITUDE * (sin8( (255 * t) / (PERIOD * FRAMES_PER_SECOND) ) / 126.0 - 1);
     for (int i = 0; i < l; i++) {
       int brightness = getBright(t, MAX_BRIGHTNESS);
-      leds[stripPos + map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-i*.8, 255, brightness);
-      leds[stripPos + 239 - map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-i*.8, 255, brightness);
+      leds[stripPos + map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - i * .8, 255, brightness);
+      leds[stripPos + 239 - map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - i * .8, 255, brightness);
     }
 
     // Fade ends of wave out
     for (int i = 1; i < FADE; i++) {
       int brightness = getBright(t, (float)(FADE - i + (l - (int)l)) / (FADE) * (MAX_BRIGHTNESS - MIN_BRIGHTNESS) + MIN_BRIGHTNESS);
       int newL = int(l); // Make a version of l as an integer for accessing list items
-      leds[stripPos + map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-(i+newL)*.8, 255, brightness);
-      leds[stripPos + 239 - map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-(i+newL)*.8, 255, brightness);
+      leds[stripPos + map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - (i + newL)*.8, 255, brightness);
+      leds[stripPos + 239 - map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - (i + newL)*.8, 255, brightness);
     }
   }
 
@@ -151,7 +150,7 @@ int getBright(int t, int maxBrightness) {
 }
 
 float getProximity(int strip) {
-  return 0;
+  //return 0;
   //  Serial.print("Raw Input: ");
   //  Serial.print(x);
   //  Serial.print("   Mapped Output: ");
@@ -160,7 +159,7 @@ float getProximity(int strip) {
   //  Serial.print("   Value: ");
   //  Serial.println(value);
 
-  int index = strip; // change if needed
+  int index = 0;//strip; // change if needed
   int IRPin = IR_PINS[index];
   if (index == 0) {
     lastSensorValue[index] = readIR(IRPin, index, values1);
@@ -175,10 +174,9 @@ int readIR(int IRPin, int index, RunningMedian values) {
 
   // Convert from sensor input to range 1-100
   int x = analogRead(IRPin);
-  Serial.println(x);
   float volts = map(x, 0, 1023, 0, 500);
   volts /= 100.0;
-  float distance = 138.0 / (volts - 1.1); // Volts = 138/Length + 1.1 from graph
+  float distance = 250.0 / (volts - 1.1); // Volts = 138/Length + 1.1 from graph
   int newValue = map(distance, 100, MAX_DISTANCE, 0, 100);
 
   // Cap distance
@@ -201,17 +199,19 @@ int readIR(int IRPin, int index, RunningMedian values) {
     outputValue = (lastValue);
   }
 
-  //  Serial.print("Raw Input: ");
-  //  Serial.print(x);
-  //  Serial.print("\tMapped Output: ");
-  //  Serial.print(distance);
-  //  Serial.print("cm");
-  //  Serial.print("\tValue1: ");
-  //  Serial.print(value);
-  //  Serial.print("\tlastValue: ");
-  //  Serial.print(lastValue);
-  //  Serial.print("\toutputValue: ");
-  //  Serial.println(outputValue);
+  Serial.print("Raw Input: ");
+  Serial.print(x);
+  Serial.print("\tMapped Output: ");
+  Serial.print(distance);
+  Serial.print("cm");
+  Serial.print("\tVolts: ");
+  Serial.print(volts);
+  Serial.print("\tValue1: ");
+  Serial.print(value);
+  Serial.print("\tlastValue: ");
+  Serial.print(lastValue);
+  Serial.print("\toutputValue: ");
+  Serial.println(outputValue);
 
   return outputValue;
 }
