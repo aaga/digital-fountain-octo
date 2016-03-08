@@ -13,12 +13,12 @@ const int HEIGHTS[] = {115, 50, 120, 120, 120, 120, 120};
 #define NUM_LEDS NUM_STRIPS * NUM_LEDS_PER_STRIP
 
 CRGB leds[NUM_LEDS];
-#define MODE_DURATION 5 // in seconds
+#define MODE_DURATION 10 // in seconds
 #define FRAMES_PER_SECOND 30
 #define NUM_FRAMES MODE_DURATION * FRAMES_PER_SECOND
 #define REFRESH_DELAY (1000/FRAMES_PER_SECOND) // time delay between LED changes (in milliseconds)
 #define NUM_MODES 3
-#define MAX_BRIGHTNESS 100
+#define MAX_BRIGHTNESS 200
 
 // IR sensors
 #define NUM_IR 2
@@ -38,7 +38,7 @@ void setup() {
   Serial.begin(9600);
 }
 
-int modeIndex = 2;
+int modeIndex = 0;
 void loop() {
   for (int t = 0; t < NUM_FRAMES; t++) {
     if (modeIndex == 0) {
@@ -55,13 +55,15 @@ void loop() {
 
   delay(1000);
   // get next mode index
-  //  if (modeIndex == NUM_MODES - 1) {
-  //    modeIndex = 0;
-  //  } else {
-  //    modeIndex++;
-  //  }
-  LEDS.show();
-  delay(20);
+  nextMode();
+}
+
+void nextMode() {
+  if (modeIndex == NUM_MODES - 1) {
+    modeIndex = 0;
+  } else {
+    modeIndex++;
+  }
 }
 
 void clearLEDs() {
@@ -73,7 +75,7 @@ void clearLEDs() {
 const int fadeBy = 5;
 void confetti(int t) {
   fadeToBlackBy(leds, NUM_LEDS, fadeBy);
-  if (t > (NUM_FRAMES - (MAX_BRIGHTNESS / fadeBy) - 15)) {
+  if (t > (NUM_FRAMES - (MAX_BRIGHTNESS / fadeBy) - map(MAX_BRIGHTNESS,0, 255, 0, 77))) {
     Serial.println(t);
     return;
   }
@@ -95,13 +97,13 @@ void confetti(int t) {
 void sineDrips(int t) {
   for (int strip = 0; strip < NUM_STRIPS; strip++) {
     int angle = (5 * t) % 256;
-    int hue = 210 + getProximity(strip) * 100;
+    int hue = 230 + getProximity(strip) * 100;
     int stripPos = (strip * NUM_LEDS_PER_STRIP);
 
     for (int i = 120 - HEIGHTS[strip]; i < 120; i++) {
-      int brightness = getBright(t, map((sin8((angle + i * 10))), 0, 255, 35, 200));
-      leds[stripPos + i] = CHSV(hue - i * .6, 255, brightness);
-      leds[stripPos + NUM_LEDS_PER_STRIP - 1 - i] = CHSV(hue - i * .6, 255, brightness);
+      int brightness = getBright(t, map((sin8((angle + i * 10))), 0, 255, 50, 200));
+      leds[stripPos + i] = CHSV(hue - i * .8, 255, brightness);
+      leds[stripPos + NUM_LEDS_PER_STRIP - 1 - i] = CHSV(hue - i * .8, 255, brightness);
     }
   }
 }
@@ -109,29 +111,28 @@ void sineDrips(int t) {
 void fadeSine(int t) {
   clearLEDs();
   // Constanst for fade sine
-  int BASE = 10;            // Num permanently on pins
-  int AMPLITUDE = 50;       // Amplitude of sin wave
+  int AMPLITUDE = 10;       // Amplitude of sin wave
   int FADE = 20;            // Num pins over which wade fades out
-  int PERIOD = 5;           // Seconds for one cycle to complete
-  int MIN_BRIGHTNESS = 25;  // Brightness: 0-255
-  int hue = 150;            // blue
+  int PERIOD = 1;           // Seconds for one cycle to complete
+  int MIN_BRIGHTNESS = 0;  // Brightness: 0-255
+  int hue = 225;            // blue
   for (int strip = 0; strip < NUM_STRIPS; strip++) {
+    int BASE = 80 * (1 - getProximity(strip));        // Num permanently on pins
     int stripPos = (strip * NUM_LEDS_PER_STRIP);
     // find length of full brightness portion
-    float l = BASE + AMPLITUDE + AMPLITUDE * sin( (2 * PI * t) / (PERIOD * FRAMES_PER_SECOND) );
-    int numLeds = HEIGHTS[strip] * 2;
+    float l = BASE + AMPLITUDE + AMPLITUDE * (sin8( (255 * t) / (PERIOD * FRAMES_PER_SECOND) ) / 126.0 - 1);
     for (int i = 0; i < l; i++) {
       int brightness = getBright(t, MAX_BRIGHTNESS);
-      leds[stripPos + i].setHSV(hue, 255, brightness);
-      //leds[strip][numLeds-i-1].setHSV(hue, 255, brightness);
+      leds[stripPos + map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-i*.8, 255, brightness);
+      leds[stripPos + 239 - map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-i*.8, 255, brightness);
     }
 
     // Fade ends of wave out
     for (int i = 1; i < FADE; i++) {
       int brightness = getBright(t, (float)(FADE - i + (l - (int)l)) / (FADE) * (MAX_BRIGHTNESS - MIN_BRIGHTNESS) + MIN_BRIGHTNESS);
       int newL = int(l); // Make a version of l as an integer for accessing list items
-      //leds[strip][newL+i].setHSV(hue, 255, brightness);
-      //leds[strip][numLeds-(i+newL)-1].setHSV(hue, 255, brightness);
+      leds[stripPos + map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-(i+newL)*.8, 255, brightness);
+      leds[stripPos + 239 - map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue-(i+newL)*.8, 255, brightness);
     }
   }
 
