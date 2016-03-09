@@ -186,6 +186,9 @@ int readIR(int IRPin, int index, RunningMedian values) {
   int x = analogRead(IRPin);
   float volts = map(x, 0, 1023, 0, 500);
   volts /= 100.0;
+  if (volts < 1.2) {
+    volts = 1.2; // prevents division by zero/negative values
+  }
   float calibration = 450.0;
   float distance = calibration / (volts - 1.1); // Volts = 138/Length + 1.1 from graph
   int newValue = map(distance, 100, MAX_DISTANCE, 0, 100);
