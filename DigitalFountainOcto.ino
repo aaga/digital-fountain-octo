@@ -4,7 +4,7 @@
 #include "RunningMedian.h"
 
 // Height measured in number of LEDs from bottom of tube to top
-const int HEIGHTS[] = {120, 120, 120, 120, 120, 120, 120};
+const int HEIGHTS[] = {60, 60, 120, 120, 120, 120, 120};
 #define MAX_HEIGHT 115
 
 #define NUM_LEDS_PER_STRIP 240
@@ -13,7 +13,7 @@ const int HEIGHTS[] = {120, 120, 120, 120, 120, 120, 120};
 #define NUM_LEDS NUM_STRIPS * NUM_LEDS_PER_STRIP
 
 CRGB leds[NUM_LEDS];
-#define MODE_DURATION 10 // in seconds
+#define MODE_DURATION 20 // in seconds
 #define FRAMES_PER_SECOND 60
 #define NUM_FRAMES MODE_DURATION * FRAMES_PER_SECOND
 #define REFRESH_DELAY (1000/FRAMES_PER_SECOND) // time delay between LED changes (in milliseconds)
@@ -21,9 +21,9 @@ CRGB leds[NUM_LEDS];
 #define MAX_BRIGHTNESS 255
 
 // IR sensors
-#define NUM_IR 1
-#define MAX_DISTANCE 350 // max distance that we care about
-const int IR_PINS[] = {22};
+#define NUM_IR 2
+#define MAX_DISTANCE 400 // max distance that we care about
+const int IR_PINS[] = {22, 19}; //21 doesn't work
 
 int lastSensorValue[NUM_IR];
 RunningMedian values1 = RunningMedian(8);
@@ -80,14 +80,14 @@ void confetti(int t) {
   }
   for (int strip = 0; strip < NUM_STRIPS; strip++) {
     // random colored speckles that blink in and fade smoothly
-    int buff = 120 - HEIGHTS[strip];
+    int buff = getMidpoint(strip) - HEIGHTS[strip];
     int stripPos = NUM_LEDS_PER_STRIP * strip;
     int pos = MAX_HEIGHT - sqrt16(random16(MAX_HEIGHT * MAX_HEIGHT));
     int brightness = getBright(t, MAX_BRIGHTNESS);
-    int hue = 135 + random8(64) + 100 * getProximity(strip);
+    int hue = 135 + random8(64) + 100 * (1 - getProximity(strip));
     if (pos < HEIGHTS[strip]) {
       leds[buff + pos + stripPos] += CHSV(hue, 200, brightness);
-      leds[NUM_LEDS_PER_STRIP - (buff + pos) + stripPos] += CHSV(hue, 200, brightness);
+      leds[getMidpoint(strip) * 2 - (buff + pos) + stripPos] += CHSV(hue, 200, brightness);
       //leds[numLeds - pos] += CHSV(hue, 200, brightness);
     }
   }
@@ -96,13 +96,13 @@ void confetti(int t) {
 void sineDrips(int t) {
   for (int strip = 0; strip < NUM_STRIPS; strip++) {
     int angle = (5 * t) % 256;
-    int hue = 230 + getProximity(strip) * 100;
+    int hue = 230 + (1 - getProximity(strip)) * 100;
     int stripPos = (strip * NUM_LEDS_PER_STRIP);
 
-    for (int i = 120 - HEIGHTS[strip]; i < 120; i++) {
+    for (int i = getMidpoint(strip) - HEIGHTS[strip]; i < getMidpoint(strip); i++) { /////
       int brightness = getBright(t, map((sin8((angle + i * 10))), 0, 255, 50, 200));
       leds[stripPos + i] = CHSV(hue - i * .8, 255, brightness);
-      leds[stripPos + NUM_LEDS_PER_STRIP - 1 - i] = CHSV(hue - i * .8, 255, brightness);
+      leds[stripPos + getMidpoint(strip) * 2 - 1 - i] = CHSV(hue - i * .8, 255, brightness);
     }
   }
 }
@@ -122,16 +122,16 @@ void fadeSine(int t) {
     float l = BASE + AMPLITUDE + AMPLITUDE * (sin8( (255 * t) / (PERIOD * FRAMES_PER_SECOND) ) / 126.0 - 1);
     for (int i = 0; i < l; i++) {
       int brightness = getBright(t, MAX_BRIGHTNESS);
-      leds[stripPos + map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - i * .8, 255, brightness);
-      leds[stripPos + 239 - map(i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - i * .8, 255, brightness);
+      leds[stripPos + map(i, 0, 120, getMidpoint(strip) - HEIGHTS[strip], getMidpoint(strip))].setHSV(hue - i * .8, 255, brightness);
+      leds[stripPos + getMidpoint(strip) * 2 - 1 - map(i, 0, 120, getMidpoint(strip) - HEIGHTS[strip], getMidpoint(strip))].setHSV(hue - i * .8, 255, brightness);
     }
 
     // Fade ends of wave out
     for (int i = 1; i < FADE; i++) {
       int brightness = getBright(t, (float)(FADE - i + (l - (int)l)) / (FADE) * (MAX_BRIGHTNESS - MIN_BRIGHTNESS) + MIN_BRIGHTNESS);
       int newL = int(l); // Make a version of l as an integer for accessing list items
-      leds[stripPos + map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - (i + newL)*.8, 255, brightness);
-      leds[stripPos + 239 - map(newL + i, 0, 120, 120 - HEIGHTS[strip], 120)].setHSV(hue - (i + newL)*.8, 255, brightness);
+      leds[stripPos + map(newL + i, 0, 120, getMidpoint(strip) - HEIGHTS[strip], getMidpoint(strip))].setHSV(hue - (i + newL)*.8, 255, brightness);
+      leds[stripPos + getMidpoint(strip) * 2 - 1 - map(newL + i, 0, 120, getMidpoint(strip) - HEIGHTS[strip], getMidpoint(strip))].setHSV(hue - (i + newL)*.8, 255, brightness);
     }
   }
 
@@ -149,8 +149,15 @@ int getBright(int t, int maxBrightness) {
   }
 }
 
+int getMidpoint(int strip) {
+  if (strip == 0) { // i.e. pin 4
+    return 84;
+  }
+  return 120;
+}
+
 float getProximity(int strip) {
-  return 0; // ignore IR
+  //return 0; // ignore IR
   //  Serial.print("Raw Input: ");
   //  Serial.print(x);
   //  Serial.print("   Mapped Output: ");
@@ -159,13 +166,16 @@ float getProximity(int strip) {
   //  Serial.print("   Value: ");
   //  Serial.println(value);
 
-  int index = 0;//strip; // change if needed
+  int index = strip % 2; //strip; // change if needed
   int IRPin = IR_PINS[index];
   if (index == 0) {
     lastSensorValue[index] = readIR(IRPin, index, values1);
   } else if (index == 1) {
     lastSensorValue[index] = readIR(IRPin, index, values2);
   }
+  //  Serial.print(index);
+  //  Serial.print("\t");
+  //  Serial.println(lastSensorValue[index]);
   return (lastSensorValue[index]) / 100.0;
 }
 
@@ -176,7 +186,8 @@ int readIR(int IRPin, int index, RunningMedian values) {
   int x = analogRead(IRPin);
   float volts = map(x, 0, 1023, 0, 500);
   volts /= 100.0;
-  float distance = 250.0 / (volts - 1.1); // Volts = 138/Length + 1.1 from graph
+  float calibration = 450.0;
+  float distance = calibration / (volts - 1.1); // Volts = 138/Length + 1.1 from graph
   int newValue = map(distance, 100, MAX_DISTANCE, 0, 100);
 
   // Cap distance
@@ -199,19 +210,20 @@ int readIR(int IRPin, int index, RunningMedian values) {
     outputValue = (lastValue);
   }
 
-  Serial.print("Raw Input: ");
-  Serial.print(x);
-  Serial.print("\tMapped Output: ");
-  Serial.print(distance);
-  Serial.print("cm");
-  Serial.print("\tVolts: ");
-  Serial.print(volts);
-  Serial.print("\tValue1: ");
-  Serial.print(value);
-  Serial.print("\tlastValue: ");
-  Serial.print(lastValue);
-  Serial.print("\toutputValue: ");
-  Serial.println(outputValue);
-
+    Serial.print(index); 
+    Serial.print("Raw Input: ");
+    Serial.print(x);
+    Serial.print("\tMapped Output: ");
+    Serial.print(distance);
+    Serial.print("cm");
+    Serial.print("\tVolts: ");
+    Serial.print(volts);
+    Serial.print("\tValue1: ");
+    Serial.print(value);
+    Serial.print("\tlastValue: ");
+    Serial.print(lastValue);
+    Serial.print("\toutputValue: ");
+    Serial.println(outputValue);
+  
   return outputValue;
 }
