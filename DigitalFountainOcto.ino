@@ -14,20 +14,20 @@ const int HEIGHTS[] = {60, 88, 97, 115, 109, 97, 60};
 
 CRGB leds[NUM_LEDS];
 #define MODE_DURATION 20 // in seconds
-#define FRAMES_PER_SECOND 30
+#define FRAMES_PER_SECOND 60
 #define NUM_FRAMES MODE_DURATION * FRAMES_PER_SECOND
 #define REFRESH_DELAY (1000/FRAMES_PER_SECOND) // time delay between LED changes (in milliseconds)
 #define NUM_MODES 3
 #define MAX_BRIGHTNESS 255
 
 #define GRADIENT_BOTTOM 130.0
-#define GRADIENT_TOP 210.0
-#define GRADIENT_CHANGE 125.0
+#define GRADIENT_TOP 200.0
+#define GRADIENT_CHANGE 100.0
 
 // IR sensors
-#define NUM_IR 1
+#define NUM_IR 2
 #define MAX_DISTANCE 400 // max distance that we care about
-const int IR_PINS[] = {23}; //21 doesn't work
+const int IR_PINS[] = {23, 22}; //21 doesn't work
 
 int lastSensorValue[NUM_IR];
 RunningMedian values1 = RunningMedian(8);
@@ -38,7 +38,6 @@ RunningMedian values2 = RunningMedian(8);
 
 void setup() {
   LEDS.addLeds<OCTOWS2811>(leds, NUM_LEDS_PER_STRIP);
-  LEDS.setBrightness(255); // overall brightness
   Serial.begin(9600);
 }
 
@@ -113,7 +112,6 @@ void sineDrips(int t) {
 }
 
 void fadeSine(int t) {
-  clearLEDs();
   // Constanst for fade sine
   int AMPLITUDE = 10;       // Amplitude of sin wave
   int FADE = 20;            // Num pins over which wade fades out
@@ -121,12 +119,15 @@ void fadeSine(int t) {
   int MIN_BRIGHTNESS = 0;  // Brightness: 0-255
   int hue = 225;            // blue
   for (int strip = 0; strip < NUM_STRIPS; strip++) {
-    int BASE = 80 * (1 - getProximity(strip));        // Num permanently on pins
+    int BASE = 80;//IGNORE IR// * (1 - getProximity(strip));        // Num permanently on pins
     int stripPos = (strip * NUM_LEDS_PER_STRIP);
     // find length of full brightness portion
     float l = BASE + AMPLITUDE + AMPLITUDE * (sin8( (255 * t) / (PERIOD * FRAMES_PER_SECOND) ) / 126.0 - 1);
-    for (int i = 0; i < l; i++) {
+    for (int i = 0; i < 120; i++) {
       int brightness = getBright(t, MAX_BRIGHTNESS);
+      if (i > l) {
+          brightness = 0;
+      }
       leds[stripPos + map(i, 0, 120, getMidpoint(strip) - HEIGHTS[strip], getMidpoint(strip))].setHSV(hue - i * .8, 255, brightness);
       leds[stripPos + getMidpoint(strip) * 2 - 1 - map(i, 0, 120, getMidpoint(strip) - HEIGHTS[strip], getMidpoint(strip))].setHSV(hue - i * .8, 255, brightness);
     }
