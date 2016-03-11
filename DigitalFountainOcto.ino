@@ -4,7 +4,7 @@
 #include "RunningMedian.h"
 
 // Height measured in number of LEDs from bottom of tube to top
-const int HEIGHTS[] = {60, 60, 120, 120, 120, 120, 120};
+const int HEIGHTS[] = {60, 88, 97, 115, 109, 97, 60};
 #define MAX_HEIGHT 115
 
 #define NUM_LEDS_PER_STRIP 240
@@ -14,16 +14,20 @@ const int HEIGHTS[] = {60, 60, 120, 120, 120, 120, 120};
 
 CRGB leds[NUM_LEDS];
 #define MODE_DURATION 20 // in seconds
-#define FRAMES_PER_SECOND 60
+#define FRAMES_PER_SECOND 30
 #define NUM_FRAMES MODE_DURATION * FRAMES_PER_SECOND
 #define REFRESH_DELAY (1000/FRAMES_PER_SECOND) // time delay between LED changes (in milliseconds)
 #define NUM_MODES 3
 #define MAX_BRIGHTNESS 255
 
+#define GRADIENT_BOTTOM 130.0
+#define GRADIENT_TOP 210.0
+#define GRADIENT_CHANGE 125.0
+
 // IR sensors
-#define NUM_IR 2
+#define NUM_IR 1
 #define MAX_DISTANCE 400 // max distance that we care about
-const int IR_PINS[] = {22, 19}; //21 doesn't work
+const int IR_PINS[] = {23}; //21 doesn't work
 
 int lastSensorValue[NUM_IR];
 RunningMedian values1 = RunningMedian(8);
@@ -84,7 +88,7 @@ void confetti(int t) {
     int stripPos = NUM_LEDS_PER_STRIP * strip;
     int pos = MAX_HEIGHT - sqrt16(random16(MAX_HEIGHT * MAX_HEIGHT));
     int brightness = getBright(t, MAX_BRIGHTNESS);
-    int hue = 135 + random8(64) + 100 * (1 - getProximity(strip));
+    int hue = GRADIENT_BOTTOM + random8(GRADIENT_TOP - GRADIENT_BOTTOM) + GRADIENT_CHANGE * getProximity(strip);
     if (pos < HEIGHTS[strip]) {
       leds[buff + pos + stripPos] += CHSV(hue, 200, brightness);
       leds[getMidpoint(strip) * 2 - (buff + pos) + stripPos] += CHSV(hue, 200, brightness);
@@ -96,13 +100,14 @@ void confetti(int t) {
 void sineDrips(int t) {
   for (int strip = 0; strip < NUM_STRIPS; strip++) {
     int angle = (5 * t) % 256;
-    int hue = 230 + (1 - getProximity(strip)) * 100;
+    int hue = GRADIENT_TOP + getProximity(strip) * GRADIENT_CHANGE;
     int stripPos = (strip * NUM_LEDS_PER_STRIP);
 
-    for (int i = getMidpoint(strip) - HEIGHTS[strip]; i < getMidpoint(strip); i++) { /////
+    for (int i = getMidpoint(strip) - HEIGHTS[strip]; i < getMidpoint(strip); i++) {
       int brightness = getBright(t, map((sin8((angle + i * 10))), 0, 255, 50, 200));
-      leds[stripPos + i] = CHSV(hue - i * .8, 255, brightness);
-      leds[stripPos + getMidpoint(strip) * 2 - 1 - i] = CHSV(hue - i * .8, 255, brightness);
+      int adjustedHue = hue - i * ((GRADIENT_TOP - GRADIENT_BOTTOM)/MAX_HEIGHT);
+      leds[stripPos + i] = CHSV(adjustedHue, 255, brightness);
+      leds[stripPos + getMidpoint(strip) * 2 - 1 - i] = CHSV(adjustedHue, 255, brightness);
     }
   }
 }
@@ -166,7 +171,7 @@ float getProximity(int strip) {
   //  Serial.print("   Value: ");
   //  Serial.println(value);
 
-  int index = strip % 2; //strip; // change if needed
+  int index = strip % NUM_IR; //strip; // change if needed
   int IRPin = IR_PINS[index];
   if (index == 0) {
     lastSensorValue[index] = readIR(IRPin, index, values1);
@@ -176,7 +181,7 @@ float getProximity(int strip) {
   //  Serial.print(index);
   //  Serial.print("\t");
   //  Serial.println(lastSensorValue[index]);
-  return (lastSensorValue[index]) / 100.0;
+  return (1 - ((lastSensorValue[index]) / 100.0)); // (0 for far away, 1 for close)
 }
 
 // Returns a value 0 (100cm away) to 100 (350cm away)
